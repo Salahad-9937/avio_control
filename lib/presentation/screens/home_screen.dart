@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/avio_provider.dart';
+import '../../providers/avio_provider.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
