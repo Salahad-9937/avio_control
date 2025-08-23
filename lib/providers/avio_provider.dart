@@ -6,10 +6,13 @@ import 'package:http/http.dart' as http;
 
 class AvioProvider extends ChangeNotifier {
   String _pressure = '';
-  String _errorMessage = '';
+  String _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
   bool _isConnected = false;
+  bool _isConnectionLost = false;
+  bool _isConnectionLostFlowActive = false; // Флаг для предотвращения повторных запусков
   late GetPressureUseCase _getPressureUseCase;
   Timer? _timer;
+  Timer? _connectionLostTimer;
 
   AvioProvider() {
     _getPressureUseCase = GetPressureUseCase(AvioRepositoryImpl());
@@ -20,54 +23,92 @@ class AvioProvider extends ChangeNotifier {
   String get pressure => _pressure;
   String get errorMessage => _errorMessage;
   bool get isConnected => _isConnected;
+  bool get isConnectionLost => _isConnectionLost;
 
   void _startAutoUpdate() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_isConnected) {
+      if (_isConnected && !_isConnectionLostFlowActive) {
         _fetchPressure();
-      } else {
+      } else if (!_isConnectionLostFlowActive) {
         _checkConnectivity();
       }
     });
   }
 
   Future<void> _checkConnectivity() async {
-    try {
+    await _handleConnectionAttempt((wasConnected) async {
       final response = await http.get(Uri.parse('http://192.168.4.1/data')).timeout(const Duration(seconds: 2));
-      _isConnected = response.statusCode == 200;
-      if (!_isConnected) {
-        _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
-        _pressure = '';
-        notifyListeners();
-      } else if (_pressure.isEmpty) {
-        _fetchPressure(); // Запрашиваем давление сразу после подключения
-      }
-    } catch (e) {
-      _isConnected = false;
-      _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
-      _pressure = '';
-      notifyListeners();
-    }
+      return response.statusCode == 200;
+    }, fetchOnSuccess: true);
   }
 
   Future<void> _fetchPressure() async {
-    try {
+    await _handleConnectionAttempt((wasConnected) async {
       final pressureValue = await _getPressureUseCase.execute();
       _pressure = pressureValue.toStringAsFixed(2);
-      _errorMessage = '';
-      _isConnected = true;
-      notifyListeners();
+      return true;
+    });
+  }
+
+  Future<void> _handleConnectionAttempt(Future<bool> Function(bool) attempt, {bool fetchOnSuccess = false}) async {
+    if (_isConnectionLostFlowActive) return; // Блокируем обработку, пока активен таймер разрыва
+    final wasConnected = _isConnected;
+    try {
+      _isConnected = await attempt(wasConnected);
+      if (_isConnected) {
+        _isConnectionLost = false;
+        _isConnectionLostFlowActive = false;
+        _errorMessage = '';
+        _connectionLostTimer?.cancel();
+        if (fetchOnSuccess && _pressure.isEmpty) {
+          await _fetchPressure();
+        }
+      } else if (wasConnected) {
+        _startConnectionLostFlow();
+      } else {
+        _isConnectionLost = false;
+        _isConnectionLostFlowActive = false;
+        _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
+        _pressure = '';
+      }
     } catch (e) {
-      _isConnected = false;
-      _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
-      _pressure = '';
-      notifyListeners();
+      if (wasConnected) {
+        _startConnectionLostFlow();
+      } else {
+        _isConnectionLost = false;
+        _isConnectionLostFlowActive = false;
+        _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
+        _pressure = '';
+      }
     }
+    notifyListeners();
+  }
+
+  void _startConnectionLostFlow() {
+    if (_isConnectionLostFlowActive) return; // Предотвращаем повторный запуск
+    _isConnectionLost = true;
+    _isConnectionLostFlowActive = true;
+    _errorMessage = 'Соединение с ESP8266 потеряно';
+    _isConnected = false;
+    _pressure = '';
+    _connectionLostTimer?.cancel();
+    print('Connection lost flow started at ${DateTime.now()}'); // Для отладки
+    _connectionLostTimer = Timer(const Duration(seconds: 10), () {
+      if (!_isConnected) {
+        _isConnectionLost = false;
+        _isConnectionLostFlowActive = false;
+        _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
+        print('Connection lost flow ended at ${DateTime.now()}'); // Для отладки
+        notifyListeners();
+      }
+    });
+    notifyListeners();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _connectionLostTimer?.cancel();
     super.dispose();
   }
 }

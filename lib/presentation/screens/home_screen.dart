@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:avio/providers/avio_provider.dart';
+import 'connection_guide_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -10,48 +11,45 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AvioProvider(),
-      child: Scaffold(
-        backgroundColor: Colors.grey[100],
-        appBar: AppBar(
-          title: const Text(
-            'Avio Control',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          backgroundColor: Colors.blueGrey[800],
-          foregroundColor: Colors.white,
-          actions: [
-            Consumer<AvioProvider>(
-              builder: (context, provider, child) {
-                return provider.isConnected
-                    ? IconButton(
-                        icon: const Icon(Icons.settings),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                          );
-                        },
-                      )
-                    : const SizedBox.shrink();
-              },
+      child: Consumer<AvioProvider>(
+        builder: (context, provider, child) {
+          if (!provider.isConnected || provider.isConnectionLost) {
+            return ConnectionGuideScreen(isConnectionLost: provider.isConnectionLost);
+          }
+          return Scaffold(
+            backgroundColor: Colors.grey[100],
+            appBar: AppBar(
+              title: const Text(
+                'Avio Control',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: Colors.blueGrey[800],
+              foregroundColor: Colors.white,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
-        body: Consumer<AvioProvider>(
-          builder: (context, provider, child) {
-            return Center(
+            body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
-                  child: provider.isConnected && provider.pressure.isNotEmpty
+                  child: provider.pressure.isNotEmpty
                       ? _buildPressureCard(provider.pressure)
                       : _buildInfoCard(provider.errorMessage),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
