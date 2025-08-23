@@ -4,7 +4,7 @@ import 'dart:async';
 
 class ApiService {
   static const String baseUrl = 'http://192.168.4.1';
-  static const int timeoutSeconds = 3;
+  static const int timeoutSeconds = 2;
 
   Future<Map<String, dynamic>> fetchPressure() async {
     try {
