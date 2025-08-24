@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:avio/domain/usecases/get_pressure_use_case.dart';
 import 'package:avio/data/repositories/avio_repository_impl.dart';
 import 'package:http/http.dart' as http;
@@ -92,13 +92,17 @@ class AvioProvider extends ChangeNotifier {
     _isConnected = false;
     _pressure = '';
     _connectionLostTimer?.cancel();
-    print('Connection lost flow started at ${DateTime.now()}'); // Для отладки
+    if (kDebugMode) {
+      print('Connection lost flow started at ${DateTime.now()}');
+    } // Для отладки
     _connectionLostTimer = Timer(const Duration(seconds: 10), () {
       if (!_isConnected) {
         _isConnectionLost = false;
         _isConnectionLostFlowActive = false;
         _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
-        print('Connection lost flow ended at ${DateTime.now()}'); // Для отладки
+        if (kDebugMode) {
+          print('Connection lost flow ended at ${DateTime.now()}');
+        } // Для отладки
         notifyListeners();
       }
     });
