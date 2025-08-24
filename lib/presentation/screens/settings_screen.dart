@@ -8,8 +8,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class SettingsScreenState extends State<SettingsScreen> {
-  double _targetAltitude = 1000.0;
-  double _speed = 50.0;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +42,6 @@ class SettingsScreenState extends State<SettingsScreen> {
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
                     setState(() {
-                      _targetAltitude = double.tryParse(value) ?? 1000.0;
                     });
                   },
                 ),
@@ -60,7 +57,6 @@ class SettingsScreenState extends State<SettingsScreen> {
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
                     setState(() {
-                      _speed = double.tryParse(value) ?? 50.0;
                     });
                   },
                 ),
