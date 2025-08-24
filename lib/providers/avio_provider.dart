@@ -9,7 +9,7 @@ class AvioProvider extends ChangeNotifier {
   String _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
   bool _isConnected = false;
   bool _isConnectionLost = false;
-  bool _isConnectionLostFlowActive = false; // Флаг для предотвращения повторных запусков
+  bool _isConnectionLostFlowActive = false;
   late GetPressureUseCase _getPressureUseCase;
   Timer? _timer;
   Timer? _connectionLostTimer;
@@ -51,7 +51,7 @@ class AvioProvider extends ChangeNotifier {
   }
 
   Future<void> _handleConnectionAttempt(Future<bool> Function(bool) attempt, {bool fetchOnSuccess = false}) async {
-    if (_isConnectionLostFlowActive) return; // Блокируем обработку, пока активен таймер разрыва
+    if (_isConnectionLostFlowActive) return;
     final wasConnected = _isConnected;
     try {
       _isConnected = await attempt(wasConnected);
@@ -85,7 +85,7 @@ class AvioProvider extends ChangeNotifier {
   }
 
   void _startConnectionLostFlow() {
-    if (_isConnectionLostFlowActive) return; // Предотвращаем повторный запуск
+    if (_isConnectionLostFlowActive) return;
     _isConnectionLost = true;
     _isConnectionLostFlowActive = true;
     _errorMessage = 'Соединение с ESP8266 потеряно';
@@ -94,7 +94,7 @@ class AvioProvider extends ChangeNotifier {
     _connectionLostTimer?.cancel();
     if (kDebugMode) {
       print('Connection lost flow started at ${DateTime.now()}');
-    } // Для отладки
+    }
     _connectionLostTimer = Timer(const Duration(seconds: 10), () {
       if (!_isConnected) {
         _isConnectionLost = false;
@@ -102,7 +102,7 @@ class AvioProvider extends ChangeNotifier {
         _errorMessage = 'Подключитесь к Wi-Fi сети ESP8266 и проверьте доступность устройства';
         if (kDebugMode) {
           print('Connection lost flow ended at ${DateTime.now()}');
-        } // Для отладки
+        }
         notifyListeners();
       }
     });
